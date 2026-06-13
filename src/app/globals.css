@@ -1,0 +1,126 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* === 主题色 === */
+:root {
+  --primary: #d4b886;
+  --primary-light: #e8d4a8;
+  --primary-dark: #b89d6a;
+  --bg-main: #f5f5f5;
+  --bg-card: #ffffff;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --border-color: #e5e5e5;
+  --success: #52c41a;
+  --info: #1890ff;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+}
+
+/* === 全局样式 === */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+#__next {
+  height: 100%;
+}
+
+/* === Leaflet 覆盖样式 === */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* === 自定义滚动条 === */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
+}
+
+/* === 动效 === */
+@keyframes glow-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(212, 184, 134, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(212, 184, 134, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 184, 134, 0);
+  }
+}
+
+.animate-glow {
+  animation: glow-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* === 地图弹窗样式覆写 === */
+.custom-popup .leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0;
+  min-width: 250px;
+  max-width: 320px;
+}
+
+.custom-popup .leaflet-popup-tip {
+  box-shadow: none;
+}
+
+/* === 移动端适配 === */
+@media (max-width: 768px) {
+  .custom-popup .leaflet-popup-content {
+    min-width: 200px;
+    max-width: 280px;
+  }
+}
