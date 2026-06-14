@@ -1,126 +1,231 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap');
 @import "leaflet/dist/leaflet.css";
 
-/* === 主题色 === */
-:root {
-  --primary: #d4b886;
-  --primary-light: #e8d4a8;
-  --primary-dark: #b89d6a;
-  --bg-main: #f5f5f5;
-  --bg-card: #ffffff;
-  --text-primary: #1a1a1a;
-  --text-secondary: #666666;
-  --text-muted: #999999;
-  --border-color: #e5e5e5;
-  --success: #52c41a;
-  --info: #1890ff;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* === 全局样式 === */
-* {
-  box-sizing: border-box;
+@layer base {
+  :root {
+    /* === Misty Garden Design System === */
+    /* Inspired by Eason Chan FNDS concert KV — overcast sky + floral bloom */
+
+    --background: 224 22% 9%;
+    --foreground: 220 18% 88%;
+
+    --card: 224 20% 13%;
+    --card-foreground: 220 18% 88%;
+
+    --popover: 224 20% 13%;
+    --popover-foreground: 220 18% 88%;
+
+    /* Primary — Peony Rose Pink */
+    --primary: 338 58% 57%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary — Muted surface */
+    --secondary: 224 16% 20%;
+    --secondary-foreground: 220 15% 70%;
+
+    /* Muted */
+    --muted: 224 16% 18%;
+    --muted-foreground: 220 12% 52%;
+
+    /* Accent — Lavender Purple */
+    --accent: 275 45% 58%;
+    --accent-foreground: 0 0% 100%;
+
+    /* System colors */
+    --destructive: 0 65% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 224 16% 22%;
+    --input: 224 16% 20%;
+    --ring: 338 58% 57%;
+
+    --radius: 0.75rem;
+
+    /* === Extended Palette === */
+    --checked: 142 58% 48%;
+    --checked-foreground: 0 0% 100%;
+    --hot: 35 78% 52%;
+    --hot-foreground: 224 22% 9%;
+    --unchecked: 275 45% 58%;
+
+    /* === Gradients === */
+    --gradient-bloom: linear-gradient(135deg, hsl(338 58% 57%) 0%, hsl(310 52% 50%) 50%, hsl(275 45% 55%) 100%);
+    --gradient-card: linear-gradient(180deg, transparent 0%, hsl(224 22% 9% / 0.92) 100%);
+    --gradient-hero: linear-gradient(160deg, hsl(224 25% 11%) 0%, hsl(280 18% 14%) 50%, hsl(340 20% 13%) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(224 22% 9%) 0%, hsl(280 15% 11%) 100%);
+
+    /* === Glass Surface === */
+    --glass-bg: hsl(224 20% 100% / 0.06);
+    --glass-border: hsl(220 30% 100% / 0.12);
+    --glass-hover: hsl(220 30% 100% / 0.10);
+
+    /* === Shadows === */
+    --shadow-bloom: 0 4px 24px hsl(338 58% 57% / 0.35);
+    --shadow-bloom-strong: 0 6px 32px hsl(338 58% 57% / 0.55);
+    --shadow-card: 0 8px 40px hsl(224 22% 4% / 0.6);
+    --shadow-glow-pink: 0 0 20px hsl(338 58% 57% / 0.3);
+    --shadow-glow-lavender: 0 0 20px hsl(275 45% 58% / 0.3);
+  }
+
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--gradient-subtle);
+  }
+
+  h1, h2, h3 {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
 }
 
 html,
 body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--bg-main);
-  color: var(--text-primary);
-}
-
-body {
-  display: flex;
-  flex-direction: column;
-}
-
-#__next {
-  height: 100%;
-}
-
-/* === Leaflet 覆盖样式 === */
-.leaflet-container {
   width: 100%;
   height: 100%;
-  z-index: 0;
+  overflow: hidden;
 }
 
-/* === 自定义滚动条 === */
+/* === Leaflet Map Overrides === */
+.leaflet-container {
+  background: hsl(210 16% 60%);
+  font-family: 'Inter', sans-serif;
+}
+
+.leaflet-tile-pane {
+  filter: grayscale(0.88) sepia(0.45) hue-rotate(178deg) brightness(0.58) contrast(0.9) saturate(1.3);
+}
+
+.leaflet-popup-content-wrapper {
+  background: hsl(224 20% 13%);
+  border: 1px solid hsl(var(--glass-border));
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  color: hsl(220 18% 88%);
+  backdrop-filter: blur(20px);
+}
+
+.leaflet-popup-tip {
+  background: hsl(224 20% 13%);
+}
+
+.leaflet-popup-close-button {
+  color: hsl(220 12% 52%) !important;
+}
+
+/* === Frosted Glass === */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid hsl(var(--glass-border));
+}
+
+/* === Animations === */
+@keyframes bloom-pulse {
+  0% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 0 0 hsl(338 58% 57% / 0.5); }
+  70% { transform: scale(1.08); opacity: 1; box-shadow: 0 0 0 10px hsl(338 58% 57% / 0); }
+  100% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 0 0 hsl(338 58% 57% / 0); }
+}
+
+@keyframes card-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes petal-float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-8px) rotate(2deg); }
+  66% { transform: translateY(-4px) rotate(-1deg); }
+}
+
+@keyframes check-bloom {
+  0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+  60% { transform: scale(1.15) rotate(5deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-card-slide-up {
+  animation: card-slide-up 0.38s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.animate-bloom-pulse {
+  animation: bloom-pulse 2.5s ease-in-out infinite;
+}
+
+.animate-petal-float {
+  animation: petal-float 4s ease-in-out infinite;
+}
+
+.animate-check-bloom {
+  animation: check-bloom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out both;
+}
+
+/* === Button Base === */
+.btn-bloom {
+  background: var(--gradient-bloom);
+  box-shadow: var(--shadow-bloom);
+  border-radius: 100px;
+  transition: var(--transition-bloom, all 0.18s ease-out);
+}
+
+.btn-bloom:hover {
+  box-shadow: var(--shadow-bloom-strong);
+  transform: translateY(-1px);
+}
+
+.btn-bloom:active {
+  transform: scale(0.97);
+}
+
+/* === Petal Tag === */
+.petal-tag {
+  background: var(--glass-bg);
+  border: 1px solid hsl(var(--glass-border));
+  color: hsl(var(--muted-foreground));
+  border-radius: 100px;
+  transition: var(--transition-bloom, all 0.18s ease-out);
+}
+
+.petal-tag.selected {
+  background: hsl(338 58% 57% / 0.2);
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+/* === Custom scrollbar === */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 3px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 3px;
+  background: hsl(var(--border));
+  border-radius: 2px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #aaa;
+  background: hsl(var(--primary) / 0.5);
 }
 
-/* === 动效 === */
-@keyframes glow-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(212, 184, 134, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(212, 184, 134, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(212, 184, 134, 0);
-  }
-}
-
-.animate-glow {
-  animation: glow-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* === 地图弹窗样式覆写 === */
-.custom-popup .leaflet-popup-content-wrapper {
-  border-radius: 12px;
-  padding: 0;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-}
-
-.custom-popup .leaflet-popup-content {
-  margin: 0;
-  min-width: 250px;
-  max-width: 320px;
-}
-
-.custom-popup .leaflet-popup-tip {
-  box-shadow: none;
-}
-
-/* === 移动端适配 === */
-@media (max-width: 768px) {
-  .custom-popup .leaflet-popup-content {
-    min-width: 200px;
-    max-width: 280px;
-  }
+/* === Safe area === */
+.bottom-nav-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }

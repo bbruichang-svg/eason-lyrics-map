@@ -2,360 +2,240 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { MapPin, Trophy, Footprints, Music2 } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
-import type { CheckinWithPlace, Profile } from '@/types/database';
-import { PLACE_TYPE_CONFIG } from '@/utils/constants';
+import { LOCATIONS } from '@/data/locations';
+import { useCheckins } from '@/hooks/useCheckins';
+import type { Profile } from '@/types/database';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { FiArrowLeft, FiMapPin, FiCamera, FiEdit2, FiCheck } from 'react-icons/fi';
+import AchievementBadge from '@/components/AchievementBadge';
+import BottomNav from '@/components/BottomNav';
+import dynamic from 'next/dynamic';
+
+const MiniMap = dynamic(() => import('./MiniMap'), { ssr: false });
 
 function ProfileContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { checkins, hasCheckedIn, loading: checkinsLoading } = useCheckins();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [checkins, setCheckins] = useState<CheckinWithPlace[]>([]);
   const [editing, setEditing] = useState(false);
   const [nickname, setNickname] = useState('');
   const [bio, setBio] = useState('');
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'timeline' | 'map'>('timeline');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
+    if (!authLoading && !user) router.push('/login');
   }, [user, authLoading, router]);
 
   useEffect(() => {
     if (!user) return;
-
-    const loadData = async () => {
-      setLoading(true);
-
-      // 加载个人资料
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      setProfile(profileData);
-      if (profileData) {
-        setNickname(profileData.nickname);
-        setBio(profileData.user_bio ?? '');
-      }
-
-      // 加载打卡记录（含地点信息）
-      const { data: checkinData } = await supabase
-        .from('checkins')
-        .select(`
-          *,
-          songs_places:place_id (
-            city_name,
-            song_title,
-            place_type
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      setCheckins((checkinData ?? []) as unknown as CheckinWithPlace[]);
+    const loadProfile = async () => {
+      const { data } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
+      setProfile(data);
+      if (data) { setNickname(data.nickname); setBio(data.user_bio ?? ''); }
       setLoading(false);
     };
-
-    loadData();
+    loadProfile();
   }, [user]);
 
-  // 保存资料
   const saveProfile = async () => {
     if (!user || !nickname.trim()) return;
     setSaving(true);
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ nickname: nickname.trim(), user_bio: bio || null })
-      .eq('user_id', user.id);
-
+    const { error } = await supabase.from('profiles').update({ nickname: nickname.trim(), user_bio: bio || null }).eq('user_id', user.id);
     if (!error) {
-      setProfile((prev) =>
-        prev
-          ? { ...prev, nickname: nickname.trim(), user_bio: bio || null }
-          : prev
-      );
+      setProfile((prev) => prev ? { ...prev, nickname: nickname.trim(), user_bio: bio || null } : prev);
       setEditing(false);
     }
     setSaving(false);
   };
 
-  // 统计
-  const stats = {
-    total: checkins.length,
-    real: checkins.filter((c) => c.check_type === 'real').length,
-    virtual: checkins.filter((c) => c.check_type === 'virtual').length,
-    countries: [...new Set(checkins.map((c) => c.songs_places?.city_name))].length,
-  };
-
-  if (authLoading || loading) {
-    return <LoadingSpinner fullScreen message="加载中..." />;
+  if (authLoading || loading || checkinsLoading) {
+    return <LoadingSpinner fullScreen />;
   }
 
   if (!user) return null;
 
+  const checkedLocations = LOCATIONS.filter((l) => hasCheckedIn(l.id));
+  const total = LOCATIONS.length;
+  const progress = checkedLocations.length / total;
+
+  const stats = {
+    total: checkins.length,
+    countries: [...new Set(checkedLocations.map((l) => l.country))].length,
+  };
+
   return (
-    <div className="min-h-screen bg-[#f5f5f5]">
-      {/* 顶部导航 */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
-        <div className="max-w-lg mx-auto px-4 h-12 flex items-center gap-3">
-          <Link href="/" className="text-gray-500 hover:text-gray-700">
-            <FiArrowLeft size={18} />
-          </Link>
-          <h1 className="text-sm font-semibold text-gray-900">我的足迹</h1>
-        </div>
+    <div className="flex flex-col h-full bg-background overflow-hidden">
+      {/* Header */}
+      <div className="flex-shrink-0 px-5 pt-4 pb-3" style={{ borderBottom: '1px solid hsl(var(--border)/0.6)' }}>
+        <h1 className="font-display font-semibold text-xl text-foreground flex items-center gap-2">
+          <Footprints className="w-5 h-5 text-primary" />
+          我的足迹
+        </h1>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
-        {/* 个人资料卡片 */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <div className="flex items-start gap-4">
-            {/* 头像 */}
-            <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-xl overflow-hidden shrink-0">
-              {profile?.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt="avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-gray-400">{nickname?.[0] ?? '🎵'}</span>
-              )}
-            </div>
-
-            {/* 信息 */}
-            <div className="flex-1 min-w-0">
-              {editing ? (
-                <div className="space-y-2">
-                  <input
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:border-[#d4b886] focus:outline-none"
-                    placeholder="昵称"
-                    maxLength={20}
-                  />
-                  <textarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs focus:border-[#d4b886] focus:outline-none resize-none"
-                    placeholder="个人简介"
-                    rows={2}
-                    maxLength={100}
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={saveProfile}
-                      disabled={saving || !nickname.trim()}
-                      className="px-3 py-1 rounded-lg text-xs font-medium text-white bg-[#1a1a1a] hover:bg-[#333] disabled:opacity-50 transition-colors"
-                    >
-                      {saving ? '保存中...' : '保存'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditing(false);
-                        setNickname(profile?.nickname ?? '');
-                        setBio(profile?.user_bio ?? '');
-                      }}
-                      className="px-3 py-1 rounded-lg text-xs text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors"
-                    >
-                      取消
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between">
-                    <h2 className="font-semibold text-sm text-gray-900">
-                      {profile?.nickname ?? '歌迷'}
-                    </h2>
-                    <button
-                      onClick={() => setEditing(true)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <FiEdit2 size={14} />
-                    </button>
-                  </div>
-                  {profile?.user_bio && (
-                    <p className="text-xs text-gray-500 mt-1">{profile.user_bio}</p>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* 统计卡片 */}
-          <div className="grid grid-cols-4 gap-3 mt-5">
-            <div className="text-center">
-              <p className="text-lg font-bold text-gray-900">{stats.total}</p>
-              <p className="text-[10px] text-gray-500">总打卡</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-green-600">{stats.real}</p>
-              <p className="text-[10px] text-gray-500">实地</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-blue-500">{stats.virtual}</p>
-              <p className="text-[10px] text-gray-500">云打卡</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-gray-900">{stats.countries}</p>
-              <p className="text-[10px] text-gray-500">城市</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Tab 切换 */}
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-          <button
-            onClick={() => setActiveTab('timeline')}
-            className={`flex-1 py-2 rounded-md text-xs font-medium transition-colors ${
-              activeTab === 'timeline'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            打卡时间线
-          </button>
-          <button
-            onClick={() => setActiveTab('map')}
-            className={`flex-1 py-2 rounded-md text-xs font-medium transition-colors ${
-              activeTab === 'map'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            个人地图
-          </button>
-        </div>
-
-        {/* 时间线 */}
-        {activeTab === 'timeline' && (
-          <div className="space-y-3">
-            {checkins.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-3xl mb-2">🗺️</p>
-                <p className="text-sm text-gray-400">还没有点亮过足迹</p>
-                <Link
-                  href="/"
-                  className="inline-block mt-3 px-4 py-2 rounded-xl text-xs font-medium text-white bg-[#1a1a1a] hover:bg-[#333] transition-colors"
-                >
-                  去地图看看
-                </Link>
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-5 space-y-5">
+          {/* Profile Card */}
+          <div className="rounded-3xl p-4" style={{ background: 'var(--glass-bg)', border: '1px solid hsl(var(--glass-border))' }}>
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center text-xl overflow-hidden shrink-0">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-muted-foreground">{nickname?.[0] ?? '🎵'}</span>
+                )}
               </div>
-            ) : (
-              checkins.map((checkin) => (
-                <div
-                  key={checkin.id}
-                  className="bg-white rounded-xl shadow-sm p-4 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-900">
-                        {checkin.songs_places?.city_name ?? '未知地点'}
-                      </h3>
-                      <p className="text-xs text-gray-500">
-                        {checkin.songs_places?.song_title ?? '未知歌曲'}
-                      </p>
+              <div className="flex-1 min-w-0">
+                {editing ? (
+                  <div className="space-y-2">
+                    <input value={nickname} onChange={(e) => setNickname(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-lg text-sm bg-background text-foreground border border-border focus:outline-none focus:border-primary"
+                      placeholder="昵称" maxLength={20} />
+                    <textarea value={bio} onChange={(e) => setBio(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-lg text-xs bg-background text-foreground border border-border focus:outline-none focus:border-primary resize-none"
+                      placeholder="个人简介" rows={2} maxLength={100} />
+                    <div className="flex gap-2">
+                      <button onClick={saveProfile} disabled={saving || !nickname.trim()}
+                        className="px-3 py-1 rounded-lg text-xs font-medium text-white bg-primary hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                        {saving ? '保存中...' : '保存'}
+                      </button>
+                      <button onClick={() => { setEditing(false); setNickname(profile?.nickname ?? ''); setBio(profile?.user_bio ?? ''); }}
+                        className="px-3 py-1 rounded-lg text-xs text-muted-foreground border border-border hover:text-foreground transition-colors">
+                        取消
+                      </button>
                     </div>
-                    <span
-                      className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-medium ${
-                        checkin.check_type === 'real'
-                          ? 'bg-green-50 text-green-600'
-                          : 'bg-blue-50 text-blue-500'
-                      }`}
-                    >
-                      {checkin.check_type === 'real' ? '📍实地' : '☁️云打卡'}
-                    </span>
                   </div>
-
-                  {checkin.check_note && (
-                    <p className="text-xs text-gray-600 leading-relaxed">
-                      {checkin.check_note}
-                    </p>
-                  )}
-
-                  {checkin.check_photos && checkin.check_photos.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto">
-                      {checkin.check_photos.map((url, i) => (
-                        <img
-                          key={i}
-                          src={url}
-                          alt={`Checkin photo ${i + 1}`}
-                          className="w-20 h-20 rounded-lg object-cover shrink-0"
-                        />
-                      ))}
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <h2 className="font-semibold text-sm text-foreground">{profile?.nickname ?? '歌迷'}</h2>
+                      <button onClick={() => setEditing(true)} className="text-muted-foreground hover:text-foreground">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
                     </div>
-                  )}
-
-                  <p className="text-[10px] text-gray-400">
-                    {new Date(checkin.created_at).toLocaleString('zh-CN', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* 个人地图 */}
-        {activeTab === 'map' && (
-          <div className="bg-white rounded-2xl shadow-sm p-4">
-            {checkins.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-sm text-gray-400">暂无足迹数据</p>
+                    {profile?.user_bio && <p className="text-xs text-muted-foreground mt-1">{profile.user_bio}</p>}
+                  </>
+                )}
               </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-500">
-                  已点亮 {stats.countries} 个城市
+            </div>
+          </div>
+
+          {/* Progress Hero Card */}
+          <div className="rounded-3xl overflow-hidden" style={{ background: 'var(--gradient-hero)', border: '1px solid hsl(var(--glass-border))' }}>
+            <div className="p-5 space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-muted-foreground text-sm">旅行进度</p>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="font-display font-bold text-4xl text-foreground">{checkedLocations.length}</span>
+                    <span className="text-muted-foreground text-lg">/{total}</span>
+                  </div>
+                  <p className="text-muted-foreground text-xs mt-1">个音乐地标已探访</p>
+                </div>
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'var(--gradient-bloom)', boxShadow: 'var(--shadow-bloom)' }}>
+                  <Trophy className="w-7 h-7 text-white" />
+                </div>
+              </div>
+
+              <div>
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: 'hsl(var(--muted))' }}>
+                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${progress * 100}%`, background: 'var(--gradient-bloom)' }} />
+                </div>
+                <p className="text-muted-foreground text-xs mt-1.5">
+                  {Math.round(progress * 100)}% · 还有 {total - checkedLocations.length} 个地点等你探索
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {/* 地区汇总 - 简单卡片式展示 */}
-                  {Object.entries(
-                    checkins.reduce<Record<string, number>>((acc, c) => {
-                      const city = c.songs_places?.city_name ?? '未知';
-                      acc[city] = (acc[city] || 0) + 1;
-                      return acc;
-                    }, {})
-                  ).map(([city, count]) => (
-                    <div
-                      key={city}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50"
-                    >
-                      <FiMapPin size={14} className="text-[#d4b886]" />
-                      <span className="text-xs text-gray-700">{city}</span>
-                      <span className="text-[10px] text-gray-400 ml-auto">
-                        ×{count}
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </div>
-            )}
+
+              {checkedLocations.length > 0 && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{ background: 'hsl(var(--primary)/0.15)', border: '1px solid hsl(var(--primary)/0.25)' }}>
+                  <Music2 className="w-3 h-3 text-primary" />
+                  <span className="text-primary text-xs font-medium">
+                    解锁了 {[...new Set(checkedLocations.flatMap(l => l.songs.map(s => s.id)))].length} 首歌曲
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+
+          {/* Mini Map */}
+          <div className="rounded-3xl overflow-hidden" style={{ border: '1px solid hsl(var(--glass-border))' }}>
+            <div className="px-4 pt-4 pb-2 flex items-center gap-2" style={{ background: 'hsl(var(--card))' }}>
+              <MapPin className="w-4 h-4 text-primary" />
+              <h2 className="text-foreground font-semibold text-sm">足迹地图</h2>
+            </div>
+            <div className="h-44">
+              <MiniMap />
+            </div>
+          </div>
+
+          {/* Achievement Badges */}
+          <div className="space-y-3">
+            <h2 className="text-foreground font-semibold text-sm flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-primary" />
+              成就徽章
+            </h2>
+            <div className="grid grid-cols-5 gap-3">
+              {LOCATIONS.map((loc) => (
+                <AchievementBadge key={loc.id} location={loc} unlocked={hasCheckedIn(loc.id)} size="sm" />
+              ))}
+            </div>
+          </div>
+
+          {/* Checkin History */}
+          {checkins.length > 0 ? (
+            <div className="space-y-3">
+              <h2 className="text-foreground font-semibold text-sm flex items-center gap-2">
+                <Footprints className="w-4 h-4 text-primary" />
+                打卡记录 ({checkins.length})
+              </h2>
+              <div className="space-y-2">
+                {[...checkins].reverse().map((checkin) => {
+                  const loc = LOCATIONS.find((l) => l.id === checkin.locationId);
+                  if (!loc) return null;
+                  return (
+                    <button
+                      key={checkin.id}
+                      onClick={() => router.push(`/place/${loc.id}`)}
+                      className="w-full flex gap-3 rounded-2xl p-3.5 text-left transition-all hover:scale-[1.01]"
+                      style={{ background: 'var(--glass-bg)', border: '1px solid hsl(var(--glass-border))' }}
+                    >
+                      <img src={loc.cover} alt={loc.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-foreground font-semibold text-sm">{loc.name}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Music2 className="w-2.5 h-2.5 text-primary flex-shrink-0" />
+                          <p className="text-muted-foreground text-xs truncate">《{loc.songs[0]?.name}》</p>
+                        </div>
+                        {checkin.content && <p className="text-muted-foreground text-xs mt-1 truncate">{checkin.content}</p>}
+                        <p className="text-muted-foreground text-[10px] mt-1">{new Date(checkin.createdAt).toLocaleDateString('zh-CN')}</p>
+                      </div>
+                      {checkin.photos[0] && <img src={checkin.photos[0]} alt="" className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--gradient-bloom)', boxShadow: 'var(--shadow-bloom)', opacity: 0.6 }}>
+                <MapPin className="w-7 h-7 text-white" />
+              </div>
+              <div className="text-center">
+                <p className="text-foreground font-display font-medium text-lg">旅程还未开始</p>
+                <p className="text-muted-foreground text-sm mt-1">去地图上探索你的第一个音乐地标吧</p>
+              </div>
+            </div>
+          )}
+
+          <div className="h-4" />
+        </div>
       </div>
 
-      {/* Footer */}
-      <div className="max-w-lg mx-auto px-4 py-6 text-center">
-        <p className="text-[10px] text-gray-400 leading-relaxed">
-          歌词版权归属所属唱片公司，本网站仅歌迷非公益情怀使用
-        </p>
-      </div>
+      <BottomNav />
     </div>
   );
 }

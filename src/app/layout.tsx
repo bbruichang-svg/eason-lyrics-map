@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import I18nProvider from './I18nProvider';
 
 export const metadata: Metadata = {
   title: 'Eason歌词足迹打卡地图',
@@ -20,7 +21,9 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" className="h-full">
       <body className="min-h-full antialiased">
-        {children}
+        <I18nProvider>
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );
